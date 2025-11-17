@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext();
@@ -34,7 +36,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('authToken');
   };
 
-  const value = {
+  const value = { 
     user,
     login,
     logout,

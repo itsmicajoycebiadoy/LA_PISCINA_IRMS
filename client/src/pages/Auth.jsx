@@ -20,6 +20,7 @@ const Auth = () => {
     email: "",
     passwordMatch: "",
   });
+  const [isLoading, setIsLoading] = useState(false); // <-- BAGONG DAGDAG
 
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -57,10 +58,14 @@ const Auth = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return; // <-- BAGONG DAGDAG
+
     if (errors.email || (!isLogin && errors.passwordMatch)) {
       alert("Please fix the errors before continuing.");
       return;
     }
+
+    setIsLoading(true); // <-- BAGONG DAGDAG
 
     try {
       if (isLogin) {
@@ -70,11 +75,8 @@ const Auth = () => {
         });
 
         const userData = res.data.user;
-        
-        // Use the auth context to login
         login(userData);
 
-        // Navigate based on role
         if (userData.role === "customer") navigate("/customer");
         else if (userData.role === "receptionist") navigate("/receptionist");
         else if (userData.role === "owner") navigate("/owner");
@@ -96,15 +98,22 @@ const Auth = () => {
       }
     } catch (err) {
       alert(err.response?.data?.message || "Operation failed");
+    } finally {
+      setIsLoading(false); // <-- BAGONG DAGDAG
     }
   };
 
   const handleForgotPasswordRequest = async (e) => {
     e.preventDefault();
+    if (isLoading) return; // <-- BAGONG DAGDAG
+
     if (errors.email) {
       alert("Please fix the email format.");
       return;
     }
+
+    setIsLoading(true); // <-- BAGONG DAGDAG
+
     try {
       await axios.post("http://localhost:5000/api/auth/forgot-password", {
         email: form.email,
@@ -129,6 +138,8 @@ const Auth = () => {
         setErrors({ email: "", passwordMatch: "" });
         setFade(false);
       }, 250);
+    } finally {
+      setIsLoading(false); // <-- BAGONG DAGDAG
     }
   };
 
@@ -195,16 +206,25 @@ const Auth = () => {
             {errors.email && (
               <p className="text-red-500 text-sm mt-1 mb-2">{errors.email}</p>
             )}
+            
             <button
               type="submit"
-              className="w-full p-2 mb-4 rounded bg-lp-orange hover:bg-lp-orange-hover text-white"
+              disabled={isLoading} // <-- IN-UPDATE KO 'TO
+              className={`w-full p-2 mb-4 rounded bg-lp-orange text-white ${
+                isLoading 
+                ? "opacity-50 cursor-not-allowed" 
+                : "hover:bg-lp-orange-hover"
+              }`} // <-- IN-UPDATE KO 'TO
             >
-              Send Reset Link
+              {isLoading ? "Sending..." : "Send Reset Link"} {/* <-- IN-UPDATE KO 'TO */}
             </button>
+            
             <p className="text-center">
               <span
-                onClick={toggleForgotPassword}
-                className="text-lp-blue cursor-pointer flex items-center justify-center gap-1"
+                onClick={!isLoading ? toggleForgotPassword : undefined} // <-- IN-UPDATE KO 'TO
+                className={`text-lp-blue flex items-center justify-center gap-1 ${
+                  isLoading ? "cursor-not-allowed" : "cursor-pointer"
+                }`}
               >
                 <ArrowLeft size={16} /> Back to Login
               </span>
@@ -251,8 +271,10 @@ const Auth = () => {
                 </div>
                 <div className="text-right mb-4">
                   <span
-                    onClick={toggleForgotPassword}
-                    className="text-sm text-lp-blue cursor-pointer hover:underline"
+                    onClick={!isLoading ? toggleForgotPassword : undefined} // <-- IN-UPDATE KO 'TO
+                    className={`text-sm text-lp-blue hover:underline ${
+                      isLoading ? "cursor-not-allowed" : "cursor-pointer"
+                    }`}
                   >
                     Forgot Password?
                   </span>
@@ -271,7 +293,6 @@ const Auth = () => {
                   className="w-full p-2 mb-4 border rounded"
                   required
                 />
-
                 <div className="mb-2">
                   <input
                     type="email"
@@ -286,7 +307,6 @@ const Auth = () => {
                     <p className="text-red-500 text-sm mt-1">{errors.email}</p>
                   )}
                 </div>
-
                 <div className="relative mb-2">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -306,7 +326,6 @@ const Auth = () => {
                     </span>
                   )}
                 </div>
-
                 <div className="relative mb-2">
                   <input
                     type={showConfirmPassword ? "text" : "password"}
@@ -337,16 +356,29 @@ const Auth = () => {
 
             <button
               type="submit"
-              className="w-full p-2 mb-4 rounded bg-lp-orange hover:bg-lp-orange-hover text-white"
+              disabled={isLoading} // <-- IN-UPDATE KO 'TO
+              className={`w-full p-2 mb-4 rounded bg-lp-orange text-white ${
+                isLoading
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-lp-orange-hover"
+              }`} // <-- IN-UPDATE KO 'TO
             >
-              {isLogin ? "Login" : "Sign Up"}
+              {isLoading
+                ? isLogin
+                  ? "Logging in..."
+                  : "Signing up..."
+                : isLogin
+                ? "Login"
+                : "Sign Up"}
             </button>
 
             <p className="text-center">
               {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
               <span
-                onClick={handleSwitchMode}
-                className="text-lp-blue cursor-pointer"
+                onClick={!isLoading ? handleSwitchMode : undefined} // <-- IN-UPDATE KO 'TO
+                className={`text-lp-blue ${
+                  isLoading ? "cursor-not-allowed" : "cursor-pointer"
+                }`}
               >
                 {isLogin ? "Sign Up" : "Login"}
               </span>
