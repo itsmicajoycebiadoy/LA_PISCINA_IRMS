@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import AmenitiesCard from "../../components/AmenitiesCard";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Facebook, Instagram, Twitter } from 'lucide-react';
+import { Facebook, Instagram, Twitter, ShoppingCart, Plus, Minus, Trash2, XCircle } from 'lucide-react';
 
 const CustomerDashboard = () => {
   const [amenities, setAmenities] = useState([]);
@@ -12,6 +12,9 @@ const CustomerDashboard = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [pageLoad, setPageLoad] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
+  const [showCart, setShowCart] = useState(false);
+  const [cart, setCart] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -27,6 +30,19 @@ const CustomerDashboard = () => {
   
   const backgroundImageUrl = "/images/bg.jpg";
   
+  // Load cart from localStorage on component mount
+  useEffect(() => {
+    const savedCart = localStorage.getItem('reservationCart');
+    if (savedCart) {
+      setCart(JSON.parse(savedCart));
+    }
+  }, []);
+
+  // Save cart to localStorage whenever cart changes
+  useEffect(() => {
+    localStorage.setItem('reservationCart', JSON.stringify(cart));
+  }, [cart]);
+
   // Page load animation
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -34,6 +50,87 @@ const CustomerDashboard = () => {
     }, 500);
     return () => clearTimeout(timer);
   }, []);
+
+  // Cart functions
+  const addToCart = (amenity) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.name === amenity.name);
+      if (existingItem) {
+        return prevCart.map(item =>
+          item.name === amenity.name
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        // Apply 20% discount when adding to cart
+        const discountedAmenity = {
+          ...amenity,
+          quantity: 1,
+          originalPrice: amenity.price, // Store original price
+          price: amenity.price * 0.8 // Apply 20% discount
+        };
+        return [...prevCart, discountedAmenity];
+      }
+    });
+    addNotification(`Added ${amenity.name} to cart with 20% discount!`, "success");
+  };
+
+  const removeFromCart = (amenityName) => {
+    setCart(prevCart => prevCart.filter(item => item.name !== amenityName));
+    addNotification(`Removed ${amenityName} from cart`, "info");
+  };
+
+  const updateQuantity = (amenityName, newQuantity) => {
+    if (newQuantity === 0) {
+      removeFromCart(amenityName);
+      return;
+    }
+    setCart(prevCart =>
+      prevCart.map(item =>
+        item.name === amenityName
+          ? { ...item, quantity: newQuantity }
+          : item
+      )
+    );
+  };
+
+  const getCartTotal = () => {
+    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const getOriginalTotal = () => {
+    return cart.reduce((total, item) => total + ((item.originalPrice || item.price) * item.quantity), 0);
+  };
+
+  const getDiscountAmount = () => {
+    return getOriginalTotal() - getCartTotal();
+  };
+
+  const getCartItemCount = () => {
+    return cart.reduce((count, item) => count + item.quantity, 0);
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    localStorage.removeItem('reservationCart');
+    addNotification('Cart cleared', 'info');
+  };
+
+  // Notification functions
+  const addNotification = (message, type = "info") => {
+    const id = Date.now();
+    const notification = { id, message, type, timestamp: new Date() };
+    setNotifications(prev => [notification, ...prev.slice(0, 4)]);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      removeNotification(id);
+    }, 5000);
+  };
+
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id));
+  };
 
   // Navigation functions
   const handleNavigation = (section) => {
@@ -44,7 +141,7 @@ const CustomerDashboard = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         break;
       case 'amenities':
-        navigate('/amenities'); // Updated to navigate to amenities page
+        navigate('/amenities');
         break;
       case 'reservations':
         navigate('/reservations');
@@ -168,9 +265,7 @@ const CustomerDashboard = () => {
   };
 
   const handleBookAmenity = (amenity) => {
-    console.log('Booking amenity:', amenity);
-    // Navigate to reservations with the selected amenity
-    navigate('/reservations', { state: { selectedAmenity: amenity } });
+    addToCart(amenity);
   };
 
   // Logout Functions
@@ -180,6 +275,7 @@ const CustomerDashboard = () => {
 
   const handleConfirmLogout = () => {
     logout();
+    localStorage.removeItem('reservationCart'); // Clear cart on logout
     navigate('/');
     setShowLogoutConfirm(false);
   };
@@ -196,6 +292,147 @@ const CustomerDashboard = () => {
   return (
     <div className={`min-h-screen bg-lp-light-bg font-body transition-all duration-500 ${pageLoad ? 'opacity-0' : 'opacity-100'}`}>
       
+      {/* Shopping Cart Sidebar */}
+      {showCart && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowCart(false)}>
+          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 h-full flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Your Cart</h3>
+                <button
+                  onClick={() => setShowCart(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {cart.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">Your cart is empty</p>
+                    <p className="text-sm text-gray-400 mt-2">Add amenities from the home page</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {cart.map((item) => (
+                      <div key={item.name} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900">{item.name}</h4>
+                          <div className="flex items-center gap-2">
+                            <p className="text-lp-orange font-bold">₱{item.price.toLocaleString()}</p>
+                            {item.originalPrice && (
+                              <p className="text-sm text-gray-500 line-through">₱{item.originalPrice.toLocaleString()}</p>
+                            )}
+                          </div>
+                          {item.capacity && (
+                            <p className="text-xs text-gray-500 mt-1">{item.capacity}</p>
+                          )}
+                          {item.originalPrice && (
+                            <p className="text-xs text-green-600 font-semibold mt-1">20% OFF!</p>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => updateQuantity(item.name, item.quantity - 1)}
+                            className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="font-semibold w-8 text-center">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.name, item.quantity + 1)}
+                            className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => removeFromCart(item.name)}
+                            className="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-200 ml-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {cart.length > 0 && (
+                <div className="border-t pt-4">
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Original Total:</span>
+                      <span className="text-sm text-gray-600 line-through">₱{getOriginalTotal().toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-green-600">Discount (20%):</span>
+                      <span className="text-sm text-green-600">-₱{getDiscountAmount().toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-bold text-gray-900">Total:</span>
+                      <span className="text-xl font-bold text-lp-orange">₱{getCartTotal().toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        setShowCart(false);
+                        navigate('/reservations', { state: { showReservationForm: true } });
+                      }}
+                      className="w-full bg-lp-orange hover:bg-lp-orange-hover text-white py-3 rounded-lg font-semibold transition-colors"
+                    >
+                      Proceed to Reservation
+                    </button>
+                    <button
+                      onClick={clearCart}
+                      className="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Clear Cart
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Responsive Notifications - Fixed on right side */}
+      <div className="fixed top-20 right-4 z-50 space-y-2 w-full max-w-xs sm:max-w-sm md:max-w-md">
+        {notifications.map((notification) => (
+          <div
+            key={notification.id}
+            className={`p-3 sm:p-4 rounded-lg shadow-lg border-l-4 transform transition-all duration-300 ${
+              notification.type === 'success'
+                ? 'bg-green-50 border-green-500 text-green-800'
+                : notification.type === 'error'
+                ? 'bg-red-50 border-red-500 text-red-800'
+                : 'bg-blue-50 border-blue-500 text-blue-800'
+            }`}
+          >
+            <div className="flex justify-between items-start">
+              <div className="flex items-start space-x-2 flex-1">
+                <div className="flex-shrink-0 mt-0.5">
+                  {notification.type === 'success' && <div className="w-4 h-4 sm:w-5 sm:h-5 text-green-500">✓</div>}
+                  {notification.type === 'error' && <div className="w-4 h-4 sm:w-5 sm:h-5 text-red-500">⚠</div>}
+                  {notification.type === 'info' && <div className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500">ℹ</div>}
+                </div>
+                <p className="font-medium text-sm sm:text-base break-words flex-1">{notification.message}</p>
+              </div>
+              <button
+                onClick={() => removeNotification(notification.id)}
+                className="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2"
+              >
+                <XCircle className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -294,7 +531,20 @@ const CustomerDashboard = () => {
               </nav>
               
               <div className="flex items-center space-x-6">
-                {/* Welcome Message - Moved to right side */}
+                {/* Cart Button */}
+                <button
+                  onClick={() => setShowCart(!showCart)}
+                  className="relative p-2 text-gray-700 hover:text-lp-orange transition-colors"
+                >
+                  <ShoppingCart className="w-6 h-6" />
+                  {getCartItemCount() > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-lp-orange text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {getCartItemCount()}
+                    </span>
+                  )}
+                </button>
+
+                {/* Welcome Message */}
                 {user && (
                   <div className="hidden md:flex items-center space-x-3 text-lp-dark">
                     <div className="w-8 h-8 bg-lp-orange rounded-full flex items-center justify-center">
@@ -324,7 +574,7 @@ const CustomerDashboard = () => {
           </div>
         </header>
 
-        {/* Hero Section - Takes remaining space */}
+        {/* Hero Section */}
         <section 
           className="flex-1 bg-cover bg-center text-white flex items-center"
           style={{
@@ -440,7 +690,7 @@ const CustomerDashboard = () => {
             </div>
           </div>
         </section>
-      </div> {/* This was the missing closing div */}
+      </div>
 
       {/* Main Dashboard Content */}
       <main className="container mx-auto px-6 py-8">
@@ -484,7 +734,7 @@ const CustomerDashboard = () => {
           {!loading && !error && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredAmenities.slice(0, 6).map((amenity) => ( // Show only first 6 amenities
+                {filteredAmenities.slice(0, 6).map((amenity) => (
                   <AmenitiesCard
                     key={amenity.id} 
                     amenity={amenity} 
@@ -492,8 +742,6 @@ const CustomerDashboard = () => {
                   />
                 ))}
               </div>
-
-        
 
               {/* No Results Message */}
               {filteredAmenities.length === 0 && amenities.length > 0 && (

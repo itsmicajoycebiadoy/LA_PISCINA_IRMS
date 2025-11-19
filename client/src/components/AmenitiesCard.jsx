@@ -1,4 +1,3 @@
-// src/components/AmenitiesCard.jsx
 import React from 'react';
 
 const AmenitiesCard = ({ amenity, onBook }) => {
@@ -34,7 +33,7 @@ const AmenitiesCard = ({ amenity, onBook }) => {
       {/* Content Section */}
       <div className="p-4">
         {/* Name */}
-        <h3 className="text-lg font-bold text-lp-dark font-header line-clamp-1 mb-2">
+        <h3 className="text-lg font-bold text-lp-dark font- line-clamp-1 mb-2">
           {amenity.name}
         </h3>
         
@@ -57,24 +56,26 @@ const AmenitiesCard = ({ amenity, onBook }) => {
           </div>
         </div>
         
-        {/* Book Now Button */}
-        <button 
-          onClick={() => onBook(amenity)}
-          disabled={!amenity.available}
-          className={`w-full py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-            amenity.available 
-              ? 'bg-lp-blue hover:bg-lp-blue-hover text-white cursor-pointer transform hover:scale-[1.02]' 
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
-            <line x1="16" x2="16" y1="2" y2="6"/>
-            <line x1="8" x2="8" y1="2" y2="6"/>
-            <line x1="3" x2="21" y1="10" y2="10"/>
-          </svg>
-          {amenity.available ? '+ Add Booking' : 'Unavailable'}
-        </button>
+        {/* Button Container */}
+        <div className="flex flex-col gap-2">
+          {/* Add to Cart Button */}
+          <button
+            onClick={() => onBook(amenity)}
+            disabled={!amenity.available}
+            className={`w-full py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
+              amenity.available 
+                ? 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer transform hover:scale-[1.02]' 
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="9" cy="21" r="1"/>
+              <circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            {amenity.available ? 'Add to Cart' : 'Unavailable'}
+          </button>
+        </div>
       </div>
     </div>
   );
